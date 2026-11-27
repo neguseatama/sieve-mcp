@@ -2,8 +2,10 @@
 """Extract one version's section from CHANGELOG.md as the release body.
 
 release.yml (release-extras) runs this with the tag's version (the v
-prefix stripped) and hands the output to the release attach as
-body_path.  The section starts at `## [<version>]` and runs to the next
+prefix stripped) on a tag push, or with the version read from
+sieve_mcp_server/__init__.py on the manual trial run, and hands the
+output to the release attach as body_path.  The section starts at
+`## [<version>]` and runs to the next
 `## [` heading (or EOF); the heading line itself is not part of the body
 because the release title already carries the tag.  A version with no
 section exits 1 - a tag without its CHANGELOG section fails the release

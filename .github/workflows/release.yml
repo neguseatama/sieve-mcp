@@ -4,9 +4,11 @@ on:
   push:
     tags:
       - "v*"
-  # the trial run: the build and the wheel self-check run without
-  # publishing anything (the release attach steps sit behind the push
-  # guard below)
+  # the trial run: the build with the wheel self-check, the release
+  # body extraction with its public-text watch and the SHA256SUMS list
+  # run on the manual dispatch and stay as build artifacts; only the
+  # provenance attestation and the release attach wait for a tag push
+  # (the guard on the publish job)
   workflow_dispatch:
 
 permissions:
@@ -44,23 +46,25 @@ jobs:
 
   release-extras:
     needs: build
-    # tag pushes publish; a workflow_dispatch trial run stops here
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
     steps:
       - name: Check out the CHANGELOG
         uses: actions/checkout@v4
 
-      - name: Extract the CHANGELOG section for the tag
+      - name: Extract the CHANGELOG section for the release body
         run: |
-          # the release body is the [tag] section of CHANGELOG.md; a
-          # tag without its section fails here (exit 1), structurally
-          python3 tools/extract_changelog.py "${GITHUB_REF_NAME#v}" > release_body.md
+          # the release body is the [version] section of CHANGELOG.md; a
+          # version with no section fails here (exit 1), structurally -
+          # the tag is cut only after the section exists.  The tag push
+          # names the version from the tag; the manual trial run reads
+          # it from sieve_mcp_server/__init__.py, the version's single
+          # source.
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION=$(python3 -c "import pathlib, re; text = pathlib.Path('sieve_mcp_server/__init__.py').read_text(encoding='utf-8'); print(re.search(r'__version__ *= *\"([^\"]+)\"', text).group(1))")
+          fi
+          python3 tools/extract_changelog.py "${VERSION}" > release_body.md
 
       - name: Public-text watch on the release body
         run: |
@@ -78,6 +82,35 @@ jobs:
           cd artifacts
           sha256sum *.whl *.tar.gz > SHA256SUMS.txt
 
+      - name: Upload SHA256SUMS.txt as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS.txt
+          path: artifacts/SHA256SUMS.txt
+
+      - name: Upload the release body as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-body
+          path: release_body.md
+
+  publish:
+    needs: release-extras
+    # tag pushes publish; the manual trial run stops here
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Download the release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
       - name: Attest the build provenance
         uses: actions/attest@v4
         with:
@@ -85,14 +118,8 @@ jobs:
             artifacts/*.whl
             artifacts/*.tar.gz
 
-      - name: Upload SHA256SUMS.txt as a build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SHA256SUMS.txt
-          path: artifacts/SHA256SUMS.txt
-
       - name: Attach SHA256SUMS.txt and the CHANGELOG body to the GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/SHA256SUMS.txt
-          body_path: release_body.md
+          body_path: artifacts/release_body.md

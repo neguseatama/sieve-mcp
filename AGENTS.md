@@ -32,10 +32,11 @@
    環境に依存する失敗はテスト側を直し、製品の不具合は次の版で直す。
    期待するパスは OS に依存しない形（`as_posix()`）で組み、子プロセスの
    標準入出力はバイト列で扱う。
-6. **公開の順序**: PR の merge → PyPI への公開（手動）→ tag →
-   GitHub Release（`release.yml` が tag で起動し、CHANGELOG の最新の節を
-   本文として点検のうえ sdist・wheel・`SHA256SUMS.txt`・来歴証明を
-   添付する）。同一版のタグ・資産の差し替えはしない。
+6. **公開の順序**: PR の merge → `release.yml` の手動試走（build と wheel
+   の self-check・CHANGELOG の本文の抽出と点検・`SHA256SUMS.txt` の作成を
+   成果物として残し、Release は作らない）→ PyPI への公開（手動）→ tag →
+   GitHub Release（tag のときだけ来歴証明と本文・`SHA256SUMS.txt` の
+   添付を行う）。同一版のタグ・資産の差し替えはしない。
 7. **機械の見張り**: 公開面の点検は手作業に頼らず
    `tools/check_public_text.py` と baseline で守る。触った行の
    コメント/docstring は規則に合わせ、baseline は下げる方向で更新する。
