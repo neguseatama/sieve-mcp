@@ -2,14 +2,14 @@
 
 # Sieve-MCP v0.1.0 (sieve-mcp-server)
 
-**The MCP server that hands local files to AI tools in a shareable form**
+**The MCP server that hands local files to AI tools in a form ready to share**
 
 Sieve-MCP is a small Model Context Protocol server for Claude Desktop,
 Claude Code and any other MCP client. It is a thin wrapper over the
 [Sieve Tray](https://github.com/neguseatama/sieve-tray) engines: the AI
 names a file or a folder inside the folders you allow, and the reply
 carries what the material looks like and where the shareable copy went
-- counts, status words, checksums, digests and relative paths. The
+- counts, status words, checksums, digests, and relative paths. The
 package installs as `sieve-mcp-server`; the product name is Sieve-MCP.
 
 ```
