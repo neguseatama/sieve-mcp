@@ -96,6 +96,4 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 * **Kai IWASAKI**
 
----
-
-* Copyright (c) 2026 Kai IWASAKI
+Copyright (c) 2026 Kai IWASAKI
