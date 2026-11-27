@@ -127,3 +127,23 @@ def test_mct12_ci_and_release_wiring():
     assert "SHA256SUMS.txt" in release_yml
     assert "actions/attest" in release_yml
     assert "workflow_dispatch" in release_yml
+    # the manual trial run covers the release body and the checksums
+    # list: the extraction (with the version read from the package's
+    # single source when no tag exists), its public-text watch and the
+    # SHA256SUMS list run before the single push guard, and the trial's
+    # results stay as named build artifacts; the provenance attestation
+    # and the release attach wait for a tag push behind the one guard
+    guard = "if: github.event_name == 'push'"
+    assert release_yml.count(guard) == 1
+    guard_at = release_yml.index(guard)
+    trial_steps = ("tools/extract_changelog.py", "--text release_body.md",
+                   "sha256sum *.whl *.tar.gz")
+    trial_at = [release_yml.index(step) for step in trial_steps]
+    assert max(trial_at) < guard_at
+    publish_steps = ("actions/attest", "action-gh-release")
+    publish_at = [release_yml.index(step) for step in publish_steps]
+    assert min(publish_at) > guard_at
+    assert "sieve_mcp_server/__init__.py" in release_yml
+    for artifact in ("name: dist", "name: SHA256SUMS.txt",
+                     "name: release-body"):
+        assert artifact in release_yml
