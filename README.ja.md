@@ -2,9 +2,9 @@
 
 # Sieve-MCP v0.1.0（sieve-mcp-server）
 
-**AI が、ローカルのファイルを、渡してよい形で受け取れるようにする MCP サーバー**
+**ローカルのファイルを、共有できる形で AI ツールへ渡す MCP サーバー**
 
-Sieve-MCP は、Claude Desktop・Claude Code などの MCP クライアント向けの小さなサーバーです。[Sieve Tray](https://github.com/neguseatama/sieve-tray) のエンジンの薄い包みとして動きます。AI が、あなたが許したフォルダの中のファイルやフォルダを名指すと、応答は「その材料がどんなものか」と「渡してよいコピーがどこにできたか」を運びます - 件数・状態の語・チェックサム・ダイジェスト・相対パスです。パッケージの名前は `sieve-mcp-server`、製品名は Sieve-MCP です。
+Sieve-MCP は、Claude Desktop・Claude Code などの MCP クライアント向けの小さなサーバーです。[Sieve Tray](https://github.com/neguseatama/sieve-tray) のエンジンを包む軽量なラッパーとして動きます。AI が、あなたが許したフォルダの中のファイルやフォルダを名指すと、応答は「その材料がどんなものか」と「渡してよいコピーがどこにできたか」を運びます - 件数・状態の語・チェックサム・ダイジェスト・相対パスです。パッケージの名前は `sieve-mcp-server`、名称は Sieve-MCP です。
 
 ```
 pip install sieve-mcp-server
