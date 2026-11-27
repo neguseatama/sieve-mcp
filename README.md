@@ -83,3 +83,15 @@ folders of a folder target by default.
 - Public-text watch: `python tools/check_public_text.py`.
 - The docs: `docs/tools.md` (the tool shapes) and `docs/protocol.md`
   (the protocol versions and their sources).
+
+---
+
+## 📄 License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## 👤 Author
+
+* **Kai IWASAKI**
