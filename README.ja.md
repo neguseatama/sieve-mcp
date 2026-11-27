@@ -70,3 +70,4 @@ MIT License。詳細は [LICENSE](LICENSE) を参照してください。
 ## 👤 Author
 
 * **Kai IWASAKI**
+* Copyright (c) 2026 Kai IWASAKI
