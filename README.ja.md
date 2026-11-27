@@ -58,3 +58,15 @@ claude mcp add sieve-mcp -- sieve-mcp-server --root /path/to/your/folder --out /
 - Test suite: `python -m pytest -v`（プロトコルの試験は公式 SDK でも走ります。`pip install ".[test]"`）。
 - 公開面の点検: `python tools/check_public_text.py`。
 - docs: `docs/tools.md`（道具の形）と `docs/protocol.md`（プロトコルの版と出所）。
+
+---
+
+## 📄 ライセンス
+
+MIT License。詳細は [LICENSE](LICENSE) を参照してください。
+
+---
+
+## 👤 Author
+
+* **Kai IWASAKI**
