@@ -95,3 +95,4 @@ MIT License. See [LICENSE](LICENSE) for details.
 ## 👤 Author
 
 * **Kai IWASAKI**
+* Copyright (c) 2026 Kai IWASAKI
