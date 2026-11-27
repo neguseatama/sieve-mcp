@@ -137,13 +137,27 @@ def test_mct12_ci_and_release_wiring():
     assert release_yml.count(guard) == 1
     guard_at = release_yml.index(guard)
     trial_steps = ("tools/extract_changelog.py", "--text release_body.md",
-                   "sha256sum *.whl *.tar.gz")
+                   "sha256sum *.whl *.tar.gz",
+                   'test -f "artifacts/sieve_mcp_server-')
     trial_at = [release_yml.index(step) for step in trial_steps]
     assert max(trial_at) < guard_at
     publish_steps = ("actions/attest", "action-gh-release")
     publish_at = [release_yml.index(step) for step in publish_steps]
     assert min(publish_at) > guard_at
     assert "sieve_mcp_server/__init__.py" in release_yml
+    assert "import sieve_mcp_server" in release_yml
+    # the release version is checked against the artifact names before
+    # anything else consumes the run: the tag names it on a tag push,
+    # the package's single source names it on the trial, and the
+    # checked value rides the environment into the extraction
+    for name_line in ('test -f "artifacts/sieve_mcp_server-'
+                      '${VERSION}.tar.gz"',
+                      'test -f "artifacts/sieve_mcp_server-'
+                      '${VERSION}-py3-none-any.whl"'):
+        assert name_line in release_yml
+    assert 'echo "RELEASE_VERSION=${VERSION}" >> "${GITHUB_ENV}"' \
+        in release_yml
+    assert 'extract_changelog.py "${RELEASE_VERSION}"' in release_yml
     for artifact in ("name: dist", "name: SHA256SUMS.txt",
                      "name: release-body"):
         assert artifact in release_yml
