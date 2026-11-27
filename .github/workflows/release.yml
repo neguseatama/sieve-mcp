@@ -4,9 +4,11 @@ on:
   push:
     tags:
       - "v*"
-  # the trial run: the build and the wheel self-check run without
-  # publishing anything (the release attach steps sit behind the push
-  # guard below)
+  # the trial run: the build with the wheel self-check, the release
+  # body extraction with its public-text watch and the SHA256SUMS list
+  # run on the manual dispatch and stay as build artifacts; only the
+  # provenance attestation and the release attach wait for a tag push
+  # (the guard on the publish job)
   workflow_dispatch:
 
 permissions:
@@ -44,7 +46,66 @@ jobs:
 
   release-extras:
     needs: build
-    # tag pushes publish; a workflow_dispatch trial run stops here
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the CHANGELOG
+        uses: actions/checkout@v4
+
+      - name: Download the build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: The artifacts carry the release version
+        # a tag run compares the tag with the artifacts; a manual trial
+        # run has no tag, so the artifacts are compared with the
+        # package's version, whose single source is
+        # sieve_mcp_server/__init__.py.  A wrong tag or a forgotten
+        # version bump stops here, before anything is published.
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION=$(python3 -c 'import sieve_mcp_server; print(sieve_mcp_server.__version__)')
+          fi
+          test -f "artifacts/sieve_mcp_server-${VERSION}.tar.gz"
+          test -f "artifacts/sieve_mcp_server-${VERSION}-py3-none-any.whl"
+          echo "RELEASE_VERSION=${VERSION}" >> "${GITHUB_ENV}"
+
+      - name: Extract the CHANGELOG section for the release body
+        run: |
+          # the release body is the [version] section of CHANGELOG.md; a
+          # version with no section fails here (exit 1), structurally -
+          # the tag is cut only after the section exists.  The version
+          # is the one the artifact names just matched.
+          python3 tools/extract_changelog.py "${RELEASE_VERSION}" > release_body.md
+
+      - name: Public-text watch on the release body
+        run: |
+          # one hit stops the release: the body reads as facts only
+          python3 tools/check_public_text.py --text release_body.md
+
+      - name: Generate SHA256SUMS.txt
+        run: |
+          cd artifacts
+          sha256sum *.whl *.tar.gz > SHA256SUMS.txt
+
+      - name: Upload SHA256SUMS.txt as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS.txt
+          path: artifacts/SHA256SUMS.txt
+
+      - name: Upload the release body as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-body
+          path: release_body.md
+
+  publish:
+    needs: release-extras
+    # tag pushes publish; the manual trial run stops here
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -53,30 +114,11 @@ jobs:
       attestations: write
       artifact-metadata: write
     steps:
-      - name: Check out the CHANGELOG
-        uses: actions/checkout@v4
-
-      - name: Extract the CHANGELOG section for the tag
-        run: |
-          # the release body is the [tag] section of CHANGELOG.md; a
-          # tag without its section fails here (exit 1), structurally
-          python3 tools/extract_changelog.py "${GITHUB_REF_NAME#v}" > release_body.md
-
-      - name: Public-text watch on the release body
-        run: |
-          # one hit stops the release: the body reads as facts only
-          python3 tools/check_public_text.py --text release_body.md
-
-      - name: Download the build artifacts
+      - name: Download the release artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
-
-      - name: Generate SHA256SUMS.txt
-        run: |
-          cd artifacts
-          sha256sum *.whl *.tar.gz > SHA256SUMS.txt
 
       - name: Attest the build provenance
         uses: actions/attest@v4
@@ -85,14 +127,8 @@ jobs:
             artifacts/*.whl
             artifacts/*.tar.gz
 
-      - name: Upload SHA256SUMS.txt as a build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SHA256SUMS.txt
-          path: artifacts/SHA256SUMS.txt
-
       - name: Attach SHA256SUMS.txt and the CHANGELOG body to the GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/SHA256SUMS.txt
-          body_path: release_body.md
+          body_path: artifacts/release_body.md
