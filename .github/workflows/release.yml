@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  # the trial run: the build and the wheel self-check run without
+  # publishing anything (the release attach steps sit behind the push
+  # guard below)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build the sdist and the wheel
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+          python -m build
+
+      - name: Self-check the wheel in a fresh venv
+        run: |
+          python -m venv smoke
+          smoke/bin/python -m pip install --upgrade pip
+          smoke/bin/python -m pip install dist/*.whl
+          smoke/bin/sieve-mcp-server --self-check
+
+      - name: Upload the build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  release-extras:
+    needs: build
+    # tag pushes publish; a workflow_dispatch trial run stops here
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Check out the CHANGELOG
+        uses: actions/checkout@v4
+
+      - name: Extract the CHANGELOG section for the tag
+        run: |
+          # the release body is the [tag] section of CHANGELOG.md; a
+          # tag without its section fails here (exit 1), structurally
+          python3 tools/extract_changelog.py "${GITHUB_REF_NAME#v}" > release_body.md
+
+      - name: Public-text watch on the release body
+        run: |
+          # one hit stops the release: the body reads as facts only
+          python3 tools/check_public_text.py --text release_body.md
+
+      - name: Download the build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS.txt
+        run: |
+          cd artifacts
+          sha256sum *.whl *.tar.gz > SHA256SUMS.txt
+
+      - name: Attest the build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            artifacts/*.whl
+            artifacts/*.tar.gz
+
+      - name: Upload SHA256SUMS.txt as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS.txt
+          path: artifacts/SHA256SUMS.txt
+
+      - name: Attach SHA256SUMS.txt and the CHANGELOG body to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/SHA256SUMS.txt
+          body_path: release_body.md

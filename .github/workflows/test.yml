@@ -1,0 +1,70 @@
+name: Test
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+        os: [ubuntu-24.04, windows-latest, macos-15]
+        include:
+          # the floor leg: the server declares >=3.10, the same floor
+          # sieve-tray declares, and the stdlib-only protocol must hold
+          # there too
+          - os: ubuntu-24.04
+            python-version: "3.10"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the server and the test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[test]"
+
+      - name: Run tests
+        run: python -m pytest -v
+
+      - name: Public-text watch
+        run: python tools/check_public_text.py
+
+      - name: Wheel smoke (fresh venv install and self-check)
+        if: runner.os == 'Linux' && matrix.python-version == '3.12'
+        run: |
+          pip install build
+          python -m build --wheel --sdist
+          python -m venv smoke-venv
+          smoke-venv/bin/python -m pip install --upgrade pip
+          smoke-venv/bin/python -m pip install dist/*.whl
+          smoke-venv/bin/sieve-mcp-server --self-check
+
+  commit-messages:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Public-text watch on the pull request's commit messages
+        run: |
+          fail=0
+          for sha in $(git rev-list origin/main..HEAD); do
+            git log -1 --format=%B "$sha" > msg.txt
+            python tools/check_public_text.py --text msg.txt || fail=1
+          done
+          exit $fail
