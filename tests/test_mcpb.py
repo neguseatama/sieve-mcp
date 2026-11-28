@@ -23,8 +23,9 @@ def test_mct20_the_bundle_recipe_rides_the_package_version(tmp_path):
         proc.stdout.decode("utf-8", "replace")[-2000:]
         + proc.stderr.decode("utf-8", "replace")[-4000:])
     from sieve_mcp_server import __version__
+    stage = dest / "sieve-mcp"
     manifest = json.loads(
-        (dest / "manifest.json").read_text(encoding="utf-8"))
+        (stage / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["manifest_version"] == "0.3"
     assert manifest["name"] == "sieve-mcp"
     # the manifest's version is written from the package's single
@@ -50,9 +51,10 @@ def test_mct20_the_bundle_recipe_rides_the_package_version(tmp_path):
         assert entry["type"] == "directory", key
         assert entry["required"] is True, key
     # the launcher rides the bundle and starts the console entry point
-    launcher = (dest / "server" / "server.py").read_text(encoding="utf-8")
+    launcher = (stage / "server" / "server.py").read_text(
+        encoding="utf-8")
     assert "sieve_mcp_server.cli" in launcher
-    lib = dest / "server" / "lib"
+    lib = stage / "server" / "lib"
     assert (lib / "sieve_mcp_server").is_dir()
     assert (lib / "sieve_tray.py").is_file()
     # no compiled part rides the bundle
