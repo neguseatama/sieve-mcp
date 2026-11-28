@@ -4,10 +4,12 @@ argument path resolution.
 The server knows two areas only: the roots (the data the tools may
 read) and the output folder (the only place anything is written).  The
 two areas must not contain each other - the check runs at startup and
-exits with code 2.  Tool path arguments resolve inside one area, never
-through ``..`` and never through a symbolic link (the link check walks
-every component below the area root).  Special files (fifo, socket,
-device) never pass.
+exits with code 2, and the report names the reason and the received
+values.  A leading tilde in a received folder resolves against the
+home folder before the checks.  Tool path arguments resolve inside one
+area, never through ``..`` and never through a symbolic link (the link
+check walks every component below the area root).  Special files (fifo,
+socket, device) never pass.
 """
 
 import os
@@ -38,19 +40,25 @@ class Spaces:
             raise StartupError("the output folder is required")
         roots = []
         for raw in root_values:
-            p = Path(raw)
+            p = Path(raw).expanduser()
             if not p.is_dir():
                 raise StartupError("every root must be an existing folder")
             roots.append(p.resolve())
-        out = Path(out_value)
+        out = Path(out_value).expanduser()
         if not out.is_dir():
             raise StartupError("the output folder must exist")
         out = out.resolve()
         for r in roots:
-            if r == out or _is_within(r, out) or _is_within(out, r):
+            if r == out:
                 raise StartupError(
-                    "the output folder and the roots must not contain "
-                    "each other")
+                    "the allowed folder and the output folder are the "
+                    "same folder")
+            if _is_within(out, r):
+                raise StartupError(
+                    "the output folder sits inside an allowed folder")
+            if _is_within(r, out):
+                raise StartupError(
+                    "an allowed folder sits inside the output folder")
         seen = []
         for r in roots:
             if r in seen:

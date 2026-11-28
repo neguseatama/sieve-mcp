@@ -14,11 +14,16 @@
 - **`.mcpb` bundle**: the release builds a Claude Desktop bundle with
   the server and its dependencies inside (the recipe is a checked-in
   script), attaches it to the GitHub Release with the wheel and the
-  sdist, and the checksums list covers everything attached.
+  sdist, and the checksums list covers everything attached; the two
+  folder questions state the rule (existing folders, different from
+  each other, neither containing the other).
 
 ### Changed
 - The one runtime dependency declares its ceiling:
   `sieve-tray>=2.6.0,<3`.
+- The startup refusal names its reason and repeats the received folder
+  values, and a leading tilde in an answer resolves against the home
+  folder.
 - The READMEs carry the scope section: what the server does and what
   it does not promise.
 

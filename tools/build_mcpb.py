@@ -70,13 +70,19 @@ def build_manifest(version: str) -> dict:
             "root": {
                 "type": "directory",
                 "title": "Allowed folder",
-                "description": "The folder whose files may be shared.",
+                "description": "The folder whose files may be shared. It "
+                               "must be an existing folder, different "
+                               "from the output folder, and neither "
+                               "folder may contain the other.",
                 "required": True,
             },
             "out": {
                 "type": "directory",
                 "title": "Output folder",
-                "description": "The folder the shareable copies go into.",
+                "description": "The folder the shareable copies go into. "
+                               "It must be an existing folder, different "
+                               "from the allowed folder, and neither "
+                               "folder may contain the other.",
                 "required": True,
             },
         },

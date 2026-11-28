@@ -69,10 +69,18 @@ def main(argv=None) -> int:
                         max_file_bytes=args.max_file_bytes,
                         max_files=args.max_files,
                         numbered_names=args.numbered_names)
-    except StartupError:
+    except StartupError as e:
         print("sieve-mcp-server: the startup options are invalid - the "
               "roots and the output folder must be existing folders and "
               "must not contain each other.", file=sys.stderr)
+        # the reason and the received values ride the report, so a
+        # desktop log answers why the start failed
+        print("  reason: %s" % e, file=sys.stderr)
+        for value in args.root:
+            print("  the allowed folder (--root): %s" % value,
+                  file=sys.stderr)
+        print("  the output folder (--out): %s" % args.out,
+              file=sys.stderr)
         return 2
     return serve(spaces)
 
