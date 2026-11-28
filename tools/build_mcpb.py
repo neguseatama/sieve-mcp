@@ -25,6 +25,7 @@ override (``mcp_config.platform_overrides``).
 import argparse
 import glob
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -49,6 +50,7 @@ def build_manifest(version: str) -> dict:
         "display_name": "Sieve-MCP",
         "version": version,
         "description": DESCRIPTION,
+        "icon": "icon.png",
         "author": {"name": "Kai IWASAKI"},
         "license": "MIT",
         "compatibility": {"runtimes": {"python": ">=3.10"}},
@@ -128,6 +130,7 @@ def main(argv=None) -> int:
     (bundle / "manifest.json").write_text(
         json.dumps(build_manifest(__version__), ensure_ascii=False,
                    indent=2) + "\n", encoding="utf-8")
+    shutil.copy2(REPO_ROOT / "icon.png", bundle / "icon.png")
 
     # a compiled part cannot ride the bundle format - the build stops
     compiled = [p.name for p in lib.rglob("*")

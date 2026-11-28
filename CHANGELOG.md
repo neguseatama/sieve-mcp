@@ -26,6 +26,7 @@
   folder.
 - The READMEs carry the scope section: what the server does and what
   it does not promise.
+- Bundle the Sieve Tray icon in the MCPB (.mcpb) archive and add icons to server.json
 
 ## [0.1.0] - 2026-11-27
 

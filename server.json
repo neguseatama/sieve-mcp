@@ -7,6 +7,13 @@
     "source": "github"
   },
   "version": "0.1.1",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/neguseatama/sieve-mcp/main/icon.png",
+      "mimeType": "image/png",
+      "sizes": ["1024x1024"]
+    }
+  ],
   "packages": [
     {
       "registryType": "pypi",
