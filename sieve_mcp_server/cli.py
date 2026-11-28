@@ -35,6 +35,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-files", type=int, default=MAX_FILES_DEFAULT,
                         metavar="N",
                         help="the per-run file count cap (default 512)")
+    parser.add_argument("--numbered-names", action="store_true",
+                        help="replace the file names in the replies with "
+                             "sequential numbers (the mapping rides each "
+                             "run's local/ folder)")
     parser.add_argument("--self-check", action="store_true",
                         help="run the in-process check (exit 0 / 1 / 2)")
     parser.add_argument("--print-config", action="store_true",
@@ -54,7 +58,8 @@ def main(argv=None) -> int:
         if not args.root or not args.out:
             parser.print_usage(sys.stderr)
             return 2
-        return print_config(args.root, args.out)
+        return print_config(args.root, args.out,
+                            numbered_names=args.numbered_names)
     if not args.root or not args.out:
         parser.print_usage(sys.stderr)
         return 2
@@ -62,7 +67,8 @@ def main(argv=None) -> int:
         spaces = Spaces(args.root, args.out,
                         max_read_chars=args.max_read_chars,
                         max_file_bytes=args.max_file_bytes,
-                        max_files=args.max_files)
+                        max_files=args.max_files,
+                        numbered_names=args.numbered_names)
     except StartupError:
         print("sieve-mcp-server: the startup options are invalid - the "
               "roots and the output folder must be existing folders and "

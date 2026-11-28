@@ -16,6 +16,11 @@ ORIGINAL_NAMES = (
     "layered.pdf", "meta.png", "junk.txt", "workspace.json", "config",
 )
 
+# the receipts' fixed names: the numbered folder carries them beside the
+# numbered copies (fixed names, never original ones)
+RECEIPT_NAMES = ("gate-receipt.json", "clean-receipt.json",
+                 "manifest-receipt.json")
+
 
 def numbered_layer(root_dir, out_dir):
     from sieve_mcp_server.paths import Spaces
@@ -44,7 +49,7 @@ def _assert_numbered_handoff(out_dir, run):
     handoff = out_dir / run / "handoff"
     assert not (handoff / "names.json").exists()
     entries = [p.name for p in handoff.iterdir()
-               if p.is_file() and p.name != "gate-receipt.json"]
+               if p.is_file() and p.name not in RECEIPT_NAMES]
     assert entries
     for name in entries:
         assert name[:4].isdigit(), name
@@ -63,6 +68,8 @@ def test_mct18_the_folder_prepare_rides_the_numbered_names(root_dir,
         assert isinstance(p, str) and p.isdigit() and len(p) == 4, p
     for f in prepared["handoff_files"]:
         name = f["path"].split("/")[-1]
+        if name in RECEIPT_NAMES:
+            continue
         assert name[:4].isdigit(), f["path"]
     _assert_numbered_handoff(out_dir, run)
     doc = _mapping_of(out_dir, run)
@@ -158,7 +165,9 @@ def test_mct18_the_file_list_and_its_verify_stay_numbered(root_dir,
     _assert_name_free(second)
     for reason in second["reasons"]:
         p = reason.get("path")
-        assert isinstance(p, str) and p[:4].isdigit(), p
+        # the tree-level reason rides the fixed dot form, the per-file
+        # reasons ride the numbered staging names
+        assert p == "." or (isinstance(p, str) and p[:4].isdigit()), p
 
 
 def test_mct18_the_verify_of_a_numbered_gate_run_stays_numbered(root_dir,

@@ -30,7 +30,8 @@ class Spaces:
     """The validated startup areas and the limits."""
 
     def __init__(self, root_values, out_value, max_read_chars=8000,
-                 max_file_bytes=5 * 1024 * 1024, max_files=512):
+                 max_file_bytes=5 * 1024 * 1024, max_files=512,
+                 numbered_names=False):
         if not root_values:
             raise StartupError("at least one root folder is required")
         if not out_value:
@@ -61,6 +62,9 @@ class Spaces:
         self.max_read_chars = max(1, min(int(max_read_chars), 20000))
         self.max_file_bytes = max(1, int(max_file_bytes))
         self.max_files = max(1, int(max_files))
+        # the numbered names: the replies carry the four-digit forms of
+        # the file names, the mapping rides each run's local/ folder
+        self.numbered_names = bool(numbered_names)
 
     def next_output_dir(self, name=None) -> Path:
         """A fresh folder under the output folder - the numbered serial
