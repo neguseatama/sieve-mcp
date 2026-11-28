@@ -12,6 +12,24 @@ from helpers import REPO_ROOT
 from test_package import _build_wheel
 
 
+def test_mct20_the_folder_questions_carry_the_two_folder_rule():
+    # the two questions state the rule themselves: the folders must
+    # exist, they must differ, and neither may contain the other - a
+    # start with one folder for both is refused, so the questions say
+    # the rule before the answer arrives
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "build_mcpb", REPO_ROOT / "tools" / "build_mcpb.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    questions = module.build_manifest("0.0.0")["user_config"]
+    for key in ("root", "out"):
+        description = questions[key]["description"]
+        assert "existing folder" in description, key
+        assert "different from" in description, key
+        assert "neither folder may contain the other" in description, key
+
+
 def test_mct20_the_bundle_recipe_rides_the_package_version(tmp_path):
     wheel = _build_wheel(tmp_path)
     dest = tmp_path / "bundle"

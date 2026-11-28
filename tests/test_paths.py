@@ -46,6 +46,47 @@ def test_mct04_startup_containment_refusals(tmp_path):
     assert _startup_code(["--out", str(out)]) != 0
 
 
+def test_mct04_startup_report_names_the_reason_and_the_values(tmp_path):
+    # the same folder for both: the report repeats the reason and the
+    # received values, so a desktop log answers why the start failed
+    root = tmp_path / "same"
+    root.mkdir()
+    proc = subprocess.run(
+        [sys.executable, "-m", "sieve_mcp_server",
+         "--root", str(root), "--out", str(root)],
+        input=b"", capture_output=True, timeout=60)
+    text = proc.stderr.decode("utf-8", "replace")
+    assert proc.returncode == 2
+    assert text.startswith(
+        "sieve-mcp-server: the startup options are invalid")
+    assert ("reason: the allowed folder and the output folder are "
+            "the same folder") in text
+    assert str(root) in text
+    # a missing folder names the existence reason
+    proc = subprocess.run(
+        [sys.executable, "-m", "sieve_mcp_server",
+         "--root", str(tmp_path / "nope"), "--out", str(root)],
+        input=b"", capture_output=True, timeout=60)
+    text = proc.stderr.decode("utf-8", "replace")
+    assert proc.returncode == 2
+    assert "reason: every root must be an existing folder" in text
+
+
+def test_mct04_tilde_answers_resolve_against_the_home_folder(
+        tmp_path, monkeypatch):
+    # a leading tilde resolves against the home folder before the
+    # existence checks (a hand-typed answer may carry one)
+    home = tmp_path / "home"
+    (home / "docs").mkdir(parents=True)
+    (home / "out").mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    from sieve_mcp_server.paths import Spaces
+    spaces = Spaces(["~/docs"], "~/out")
+    assert spaces.roots[0] == (home / "docs").resolve()
+    assert spaces.out == (home / "out").resolve()
+
+
 def _call(server, name, arguments) -> dict:
     server.send({"jsonrpc": "2.0", "id": 99, "method": "tools/call",
                  "params": {"name": name, "arguments": arguments}})
