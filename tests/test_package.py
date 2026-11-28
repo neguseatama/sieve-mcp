@@ -161,3 +161,28 @@ def test_mct12_ci_and_release_wiring():
     for artifact in ("name: dist", "name: SHA256SUMS.txt",
                      "name: release-body"):
         assert artifact in release_yml
+
+
+def test_mct12_the_release_rides_the_bundle_lane_and_the_attach_gate():
+    release_yml = (REPO_ROOT / ".github" / "workflows" / "release.yml") \
+        .read_text(encoding="utf-8")
+    # the bundle lane rides the trial run too: the recipe is the
+    # checked-in script and the official CLI validates and packs it
+    assert "tools/build_mcpb.py" in release_yml
+    assert "@anthropic-ai/mcpb" in release_yml
+    assert "name: mcpb" in release_yml
+    assert "tools/build_mcpb.py" in release_yml.split("workflow_dispatch")[1]
+    # the bundle rides the checksums list and the release attach only
+    # when the repository variable says the trial bundle passed on the
+    # real Desktop; the ship step stages its assets into one folder, so
+    # the attach step's glob never matches an empty set
+    assert release_yml.count("vars.MCPB_ATTACH") == 2
+    assert release_yml.count('[ "${MCPB_ATTACH}" = "yes" ]') == 2
+    sums_at = release_yml.index("sha256sum *.whl *.tar.gz")
+    bundle_sums_at = release_yml.index('sha256sum sieve-mcp-*.mcpb')
+    assert bundle_sums_at > sums_at
+    assert "release-assets" in release_yml
+    guard = "if: github.event_name == 'push'"
+    assert release_yml.count(guard) == 1
+    guard_at = release_yml.index(guard)
+    assert release_yml.index("release-assets") > guard_at
