@@ -57,8 +57,9 @@ exits 0 when everything matches.
 
 Download `sieve-mcp-0.1.1.mcpb` from the release page of the
 repository and drag it into the Claude Desktop window. The installer
-asks for the two folders (the allowed folder and the output folder)
-and writes the configuration for you.
+asks for the two folders (the allowed folder and the output folder;
+two different folders, neither containing the other) and writes the
+configuration for you.
 
 > The official MCP registry lists this server too: clients that
 > support the registry can install it from there (the `server.json`
