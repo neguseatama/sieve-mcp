@@ -5,7 +5,7 @@
 ## Build and test
 
 - Python >= 3.10（Tray 2.6.0 と同じ下限）。
-- 実行時の依存は `sieve-tray>=2.6.0` のみ（extras なし）。テストだけが
+- 実行時の依存は `sieve-tray>=2.6.0,<3` のみ（extras なし）。テストだけが
   公式 SDK（`pip install ".[test]"` で `mcp` が入る）。
 - Test suite: `python -m pytest -v`。
 - Package build: `python -m build`。
@@ -27,23 +27,19 @@
 4. **版の作法**: 版は `sieve_mcp_server/__init__.py` の `__version__` が
    唯一の静的な源。pyproject は dynamic attr で参照し、README ×2 の
    題字と CHANGELOG の最新の節と docs の登録表はそれと一致させる。
-   版を固定するテストは `__version__` との比較の形にする。
+   リポジトリ直下の `server.json`（レジストリ登録の面）と、`.mcpb` の
+   manifest（`tools/build_mcpb.py` が `__version__` から書く）もそれに
+   従う。版を固定するテストは `__version__` との比較の形にする。
 5. **CI**: 3 OS（ubuntu / windows / macos × 3.12、ubuntu 3.10 の下限）。
    環境に依存する失敗はテスト側を直し、製品の不具合は次の版で直す。
    期待するパスは OS に依存しない形（`as_posix()`）で組み、子プロセスの
    標準入出力はバイト列で扱う。
 6. **公開の順序**: PR の merge → `release.yml` の手動試走（build と wheel
-   の self-check・`tools/build_mcpb.py` による `.mcpb` の組立と公式 CLI
-   による検証・成果物の名前と版の一致の確認・CHANGELOG の本文の抽出と
+   の self-check・成果物の名前と版の一致の確認・CHANGELOG の本文の抽出と
    点検・`SHA256SUMS.txt` の作成を成果物として残し、Release は作らない）→
-   試走の `.mcpb` を実機の Claude Desktop で確かめ、起動と 6 道具の呼び出し
-   が確認できたときだけリポジトリ変数 `MCPB_ATTACH` を `yes` にする
-   （起動しない版では変数を据え置きのまま、その版は `.mcpb` を外して
-   公開する）→ PyPI への公開（手動）→ tag → GitHub Release（tag のときだけ
-   来歴証明と、本文と `SHA256SUMS.txt`（`.mcpb` を添付するときは `.mcpb`
-   を含む）の添付を行う）。同一版のタグ・資産の差し替えはしない。公式
-   MCP レジストリへの登録は PyPI 公開のあとに実行し、その時点の要件
-   （料金の有無を含む）は登録の実行時に確かめる。
+   PyPI への公開（手動）→ tag → GitHub Release（tag のときだけ来歴証明と
+   本文・`SHA256SUMS.txt` の添付を行う）。同一版のタグ・資産の差し替えは
+   しない。
 7. **機械の見張り**: 公開面の点検は手作業に頼らず
    `tools/check_public_text.py` と baseline で守る。触った行の
    コメント/docstring は規則に合わせ、baseline は下げる方向で更新する。

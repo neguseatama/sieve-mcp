@@ -1,6 +1,6 @@
 **English** | [日本語](README.ja.md)
 
-# Sieve-MCP v0.1.0 (sieve-mcp-server)
+# Sieve-MCP v0.1.1 (sieve-mcp-server)
 
 **The MCP server that hands local files to AI tools in a form ready to share**
 
@@ -17,7 +17,7 @@ name is Sieve-MCP.
 pip install sieve-mcp-server
 ```
 
-The only runtime dependency is `sieve-tray>=2.6.0` (installed
+The only runtime dependency is `sieve-tray>=2.6.0,<3` (installed
 automatically, no extra needed). Requires Python >= 3.10.
 
 ## Configure
@@ -97,3 +97,5 @@ MIT License. See [LICENSE](LICENSE) for details.
 * **Kai IWASAKI**
 
 Copyright (c) 2026 Kai IWASAKI
+
+mcp-name: io.github.neguseatama/sieve-mcp

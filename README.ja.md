@@ -1,6 +1,6 @@
 [English](README.md) | **日本語**
 
-# Sieve-MCP v0.1.0（sieve-mcp-server）
+# Sieve-MCP v0.1.1（sieve-mcp-server）
 
 **ローカルのファイルを、共有できる形で AI ツールへ渡す MCP サーバー**
 
@@ -10,7 +10,7 @@ Sieve-MCP は、Claude Desktop・Claude Code などの MCP クライアント向
 pip install sieve-mcp-server
 ```
 
-実行時の依存は `sieve-tray>=2.6.0` だけ（自動で入る・extra は不要）。Python は 3.10 以上です。
+実行時の依存は `sieve-tray>=2.6.0,<3` だけ（自動で入る・extra は不要）。Python は 3.10 以上です。
 
 ## 設定
 
@@ -72,3 +72,5 @@ MIT License。詳細は [LICENSE](LICENSE) を参照してください。
 * **Kai IWASAKI**
 
 Copyright (c) 2026 Kai IWASAKI
+
+mcp-name: io.github.neguseatama/sieve-mcp
