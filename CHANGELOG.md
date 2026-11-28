@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.1] - 2026-11-28
+
+### Added
+- **Registry support**: `server.json` at the repository root rides the
+  official MCP registry shape (the `pypi` package with the `uvx` hint,
+  the stdio transport and the two required folder arguments), and the
+  READMEs carry the `mcp-name: io.github.neguseatama/sieve-mcp`
+  ownership line.
+- **`--numbered-names`**: the startup flag replaces the file names in
+  every reply with sequential numbers (0001, 0002, ...); the mapping
+  table rides each run's `local/` folder only, never `handoff/`.
+- **`.mcpb` bundle**: the release builds a Claude Desktop bundle with
+  the server and its dependencies inside (the recipe is a checked-in
+  script), attaches it to the GitHub Release with the wheel and the
+  sdist, and the checksums list covers everything attached.
+
+### Changed
+- The one runtime dependency declares its ceiling:
+  `sieve-tray>=2.6.0,<3`.
+- The READMEs carry the scope section: what the server does and what
+  it does not promise.
+
 ## [0.1.0] - 2026-11-27
 
 ### Added

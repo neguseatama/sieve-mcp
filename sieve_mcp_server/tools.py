@@ -29,6 +29,30 @@ from .paths import (Spaces, resolve_any, resolve_data, resolve_out,
 # the readable set (the tools hand their content to the AI themselves)
 READ_SUFFIXES = (".txt", ".md", ".html", ".csv")
 
+
+def _numbered_mapping(outdir: Path, tool: str, pairs: dict) -> None:
+    """The numbered-names mapping (the four-digit form to the original
+    relative path): it lands ONLY under the run's local/ folder, never
+    under handoff/ - the handoff side carries the numbered files and
+    the receipts alone."""
+    local = outdir / "local"
+    local.mkdir(exist_ok=True)
+    doc = {"version": 1, "tool": tool, "names": dict(sorted(pairs.items()))}
+    (local / "names.json").write_text(
+        json.dumps(doc, ensure_ascii=False, indent=1, sort_keys=True)
+        + "\n", encoding="utf-8")
+
+
+def _index_path_of(item: dict):
+    """The reply's path field of one receipt item: the receipt's own
+    relative path as it is, or the receipt's four-digit index when the
+    numbered names ride (the no-paths receipts carry the index and no
+    path)."""
+    index = item.get("index")
+    if isinstance(index, int) and not isinstance(index, bool):
+        return "%04d" % index
+    return item.get("path")
+
 TOOL_NAMES = (
     "prepare_for_sharing",
     "read_handoff",
@@ -120,6 +144,9 @@ class ToolLayer:
 
     def __init__(self, spaces: Spaces):
         self.spaces = spaces
+        # the numbered names: the replies carry the four-digit forms,
+        # the mapping rides each run's local/ folder only
+        self.numbered = bool(getattr(spaces, "numbered_names", False))
 
     def call(self, name, args) -> dict:
         if not isinstance(args, dict):
@@ -156,10 +183,15 @@ class ToolLayer:
             raise ToolError("too_large")
         outdir = self.spaces.next_output_dir(name)
         redact_mode = "same-value" if same_value else "label"
+        # the numbered names ride the Gate's own no-paths mode: the
+        # handoff files and the receipt carry the four-digit forms, and
+        # the mapping repeats the Gate's sorted walk below
+        include_paths = not self.numbered
         if target.is_dir():
             receipt = _run_engine(
                 lambda: sieve_tray.run_gate(
-                    target, outdir, redact_mode=redact_mode))
+                    target, outdir, redact_mode=redact_mode,
+                    include_paths=include_paths))
         else:
             if target.stat().st_size > self.spaces.max_file_bytes:
                 raise ToolError("too_large")
@@ -167,23 +199,41 @@ class ToolLayer:
             # scratch staging folder outside the output tree, removed
             # when the run ends
             receipt = _run_engine(lambda: self._gate_one_file(
-                target, outdir, redact_mode))
+                target, outdir, redact_mode, include_paths))
+        if self.numbered:
+            _numbered_mapping(outdir, "prepare_for_sharing",
+                              self._gate_pairs(target, rel))
         return self._gate_payload(receipt, outdir)
 
     @staticmethod
-    def _gate_one_file(target: Path, outdir: Path, redact_mode: str) -> dict:
+    def _gate_pairs(target: Path, rel: str) -> dict:
+        # the same walk and the same sorted order the Gate rides, so
+        # the reply's four-digit forms and the receipt's indexes match
+        # the original paths one to one
+        if target.is_dir():
+            rels = sieve_tray._gate_walk(target, exclude_vault_dirs=True)
+        else:
+            rels = [rel]
+        return {"%04d" % (i + 1): walk_rel
+                for i, walk_rel in enumerate(rels)}
+
+    @staticmethod
+    def _gate_one_file(target: Path, outdir: Path, redact_mode: str,
+                       include_paths: bool = True) -> dict:
         with tempfile.TemporaryDirectory(prefix="sieve-mcp-stage-") as td:
             stage = Path(td) / "staging"
             stage.mkdir()
             shutil.copyfile(target, stage / target.name)
-            return sieve_tray.run_gate(stage, outdir, redact_mode=redact_mode)
+            return sieve_tray.run_gate(stage, outdir,
+                                       redact_mode=redact_mode,
+                                       include_paths=include_paths)
 
     def _gate_payload(self, receipt: dict, outdir: Path) -> dict:
         out_rel = outdir.name
         items = []
         hidden = {}
         for it in receipt.get("items") or []:
-            entry = {"path": it.get("path"), "status": it.get("status")}
+            entry = {"path": _index_path_of(it), "status": it.get("status")}
             reason = it.get("not_produced_reason") or it.get("unobserved_reason")
             if reason:
                 entry["reason"] = reason
@@ -268,12 +318,17 @@ class ToolLayer:
             lambda: sieve_tray.check_paths([str(target)],
                                            only_hidden=only_hidden))
         # check_paths echoes the given path back into the items - the
-        # reply carries the root-relative POSIX form only
+        # reply carries the root-relative POSIX form, or the four-digit
+        # per-reply form when the numbered names ride (the observation
+        # writes nothing, so it keeps no mapping table)
         target_str = str(target)
-        for item in result.get("items") or []:
+        for position, item in enumerate(result.get("items") or [], start=1):
             p = item.get("path")
             if isinstance(p, str):
-                item["path"] = self._relativize(p, target_str, rel)
+                if self.numbered:
+                    item["path"] = "%04d" % position
+                else:
+                    item["path"] = self._relativize(p, target_str, rel)
         return result
 
     @staticmethod
@@ -362,13 +417,17 @@ class ToolLayer:
             if target.stat().st_size > self.spaces.max_file_bytes:
                 raise ToolError("too_large")
         outdir = self.spaces.next_output_dir(name)
+        # the numbered names ride the clean lane's no-paths mode: the
+        # copies land as 0001.png and the receipt carries the indexes
         receipt = _run_engine(
-            lambda: _import_canon().run_clean(target, outdir))
+            lambda: _import_canon().run_clean(target, outdir,
+                                              no_paths=self.numbered))
         out_rel = outdir.name
         items = []
         for it in receipt.get("items") or []:
             entry = {
-                "path": self._clean_item_path(it, target, rel),
+                "path": (self._clean_item_path(it, target, rel)
+                         if not self.numbered else _index_path_of(it)),
                 "status": it.get("status"),
                 "format": it.get("format"),
                 "categories_before": it.get("categories_before"),
@@ -382,6 +441,9 @@ class ToolLayer:
                 entry["output"] = "%s/handoff/%s" % (out_rel,
                                                      it["output_name"])
             items.append(entry)
+        if self.numbered:
+            _numbered_mapping(outdir, "remove_metadata",
+                              self._clean_pairs(target, rel))
         return {
             "ok": True,
             "tool": "remove_metadata",
@@ -405,6 +467,18 @@ class ToolLayer:
             return rel + "/" + p.replace("\\", "/")
         return rel
 
+    @staticmethod
+    def _clean_pairs(target: Path, rel: str) -> dict:
+        # the clean lane enumerates with the manifest scan (regular
+        # files only), one-based, in the scan's sorted order
+        if target.is_dir():
+            scanned, _skipped = sieve_tray._seal_manifest_scan(target)
+            rels = [it.get("path") for it in scanned]
+        else:
+            rels = [rel]
+        return {"%04d" % (i + 1): scan_rel
+                for i, scan_rel in enumerate(rels)}
+
     # --- create_file_list ---------------------------------------------------
 
     def create_file_list(self, args) -> dict:
@@ -426,6 +500,9 @@ class ToolLayer:
                 raise ToolError("too_large")
             receipt = _run_engine(lambda: self._manifest_one_file(
                 target, outdir))
+        if self.numbered:
+            _numbered_mapping(outdir, "create_file_list",
+                              self._manifest_pairs(target, rel))
         summary = receipt.get("summary") or {}
         out_rel = outdir.name
         return {
@@ -437,6 +514,24 @@ class ToolLayer:
             "record_path": "%s/handoff/manifest-receipt.json" % out_rel,
         }
 
+    def _manifest_stage_plan(self, target: Path) -> list:
+        """The staged copies of the list run: the mirrored relative
+        names, or the flat numbered names when the numbered names ride
+        (one counter over the walk's sorted order, symlinks skipped as
+        before).  Returns (source, staged_name, original_rel) triples."""
+        plan = []
+        for rel_file in sieve_tray._gate_walk(target,
+                                              exclude_vault_dirs=True):
+            src = target / rel_file
+            if src.is_symlink():
+                continue
+            if self.numbered:
+                staged = "%04d%s" % (len(plan) + 1, src.suffix.lower())
+            else:
+                staged = rel_file
+            plan.append((src, staged, rel_file))
+        return plan
+
     def _manifest_tree(self, target: Path, outdir: Path) -> dict:
         # the folder list skips the two vault folders with the Tray
         # walk (the Gate's ingest flag) and lists the rest byte-exact:
@@ -445,24 +540,30 @@ class ToolLayer:
         # get copied
         stage = outdir / "local" / "staging"
         stage.mkdir(parents=True)
-        for rel_file in sieve_tray._gate_walk(
-                target, exclude_vault_dirs=True):
-            src = target / rel_file
-            if src.is_symlink():
-                continue
-            dest = stage / rel_file
+        for src, staged, _rel in self._manifest_stage_plan(target):
+            dest = stage / staged
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(src, dest)
         return sieve_tray.run_manifest(stage, outdir)
 
-    @staticmethod
-    def _manifest_one_file(target: Path, outdir: Path) -> dict:
+    def _manifest_one_file(self, target: Path, outdir: Path) -> dict:
         # one file rides the same local staging shape, so the record
         # stays verifiable against the run folder
         stage = outdir / "local" / "staging"
         stage.mkdir(parents=True)
-        shutil.copyfile(target, stage / target.name)
+        staged = ("%04d%s" % (1, target.suffix.lower())
+                  if self.numbered else target.name)
+        shutil.copyfile(target, stage / staged)
         return sieve_tray.run_manifest(stage, outdir)
+
+    def _manifest_pairs(self, target: Path, rel: str) -> dict:
+        # the same plan the staging rode, so the receipt's paths and
+        # the verify reasons match the mapping one to one
+        if target.is_dir():
+            return {"%04d" % (i + 1): rel_file
+                    for i, (_src, _staged, rel_file)
+                    in enumerate(self._manifest_stage_plan(target))}
+        return {"0001": rel}
 
 
 def _lstat_kind_of(p: Path) -> str:

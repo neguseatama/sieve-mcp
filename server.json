@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.neguseatama/sieve-mcp",
+  "description": "Hands local files to AI tools in a shareable form: hidden-text check, masking, metadata clean.",
+  "repository": {
+    "url": "https://github.com/neguseatama/sieve-mcp",
+    "source": "github"
+  },
+  "version": "0.1.1",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "sieve-mcp-server",
+      "version": "0.1.1",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--root",
+          "isRequired": true,
+          "format": "filepath",
+          "description": "Absolute path of a folder whose files may be shared. Not inside the output folder."
+        },
+        {
+          "type": "named",
+          "name": "--out",
+          "isRequired": true,
+          "format": "filepath",
+          "description": "Absolute path of the output folder. Not inside any allowed folder."
+        }
+      ]
+    }
+  ]
+}

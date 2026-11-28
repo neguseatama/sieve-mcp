@@ -1,6 +1,6 @@
 **English** | [日本語](README.ja.md)
 
-# Sieve-MCP v0.1.0 (sieve-mcp-server)
+# Sieve-MCP v0.1.1 (sieve-mcp-server)
 
 **The MCP server that hands local files to AI tools in a form ready to share**
 
@@ -17,7 +17,7 @@ name is Sieve-MCP.
 pip install sieve-mcp-server
 ```
 
-The only runtime dependency is `sieve-tray>=2.6.0` (installed
+The only runtime dependency is `sieve-tray>=2.6.0,<3` (installed
 automatically, no extra needed). Requires Python >= 3.10.
 
 ## Configure
@@ -53,6 +53,17 @@ this configuration from your own values, and
 `sieve-mcp-server --self-check` runs the whole flow in one process and
 exits 0 when everything matches.
 
+### Claude Desktop (the .mcpb bundle)
+
+Download `sieve-mcp-0.1.1.mcpb` from the release page of the
+repository and drag it into the Claude Desktop window. The installer
+asks for the two folders (the allowed folder and the output folder)
+and writes the configuration for you.
+
+> The official MCP registry lists this server too: clients that
+> support the registry can install it from there (the `server.json`
+> file at the repository root carries the registered shape).
+
 ## The tools
 
 | Tool | What it does | What the reply carries |
@@ -74,7 +85,24 @@ the JSON messages alone. The server reads only inside the `--root`
 folders (no `..`, no symbolic links, no special files), writes only
 under `--out` into numbered folders that are never overwritten, leaves
 the originals untouched, and skips the `.obsidian/` and `.trash/`
-folders of a folder target by default.
+folders of a folder target by default. Starting the server with
+`--numbered-names` replaces the file names in the replies with
+sequential numbers; the mapping between the numbers and the original
+names rides each run's `local/` folder only.
+
+## Scope
+
+What the server does: it runs the Sieve Tray engines on the files
+inside the folders you allow, hands the shareable copies to the AI,
+and keeps every reply to counts, status words, checksums and relative
+paths. The originals never change.
+
+What it does not do: the observation covers the hidden-text and
+metadata kinds the engines list - forms outside those lists are not
+found; nothing here scans for malware; and which files the AI asks
+for is governed by how you use the client, not by the server. The
+software is provided under the MIT license, without warranty of any
+kind.
 
 ## Development
 
@@ -97,3 +125,5 @@ MIT License. See [LICENSE](LICENSE) for details.
 * **Kai IWASAKI**
 
 Copyright (c) 2026 Kai IWASAKI
+
+mcp-name: io.github.neguseatama/sieve-mcp

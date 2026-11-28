@@ -5,10 +5,12 @@
 ```
 sieve-mcp-server --root DIR [--root DIR ...] --out DIR
                  [--max-read-chars N] [--max-file-bytes N] [--max-files N]
+                 [--numbered-names]
 ```
 
 - `--root` は 1 つ以上・`--out` は必須。いずれも存在するフォルダで、互いを含んではいけない（違反は終了符号 2）。
 - `--max-read-chars` は `read_handoff` の 1 回の長さの上限（既定 8,000・上限 20,000）。`--max-file-bytes` は 1 ファイルのバイト上限（既定 5 MiB）。`--max-files` は 1 回の実行のファイル数の上限（既定 512）。
+- `--numbered-names` は、応答に出るファイルの名前を連番に替える起動時フラグ（既定は無効・末尾の節）。
 
 すべての道具の入力は JSON Schema つきのオブジェクトで、`tools/list` の `inputSchema` が正。未知の鍵・欠けた鍵・型の違いは `invalid_arguments`。応答は `structuredContent`（下の形）と、同じ内容の JSON 文字列 1 個の `content` の両方で、失敗には `isError: true` がつく。
 
@@ -68,3 +70,14 @@ sieve-mcp-server --root DIR [--root DIR ...] --out DIR
 - 入力: `path`（必須）・`name`（省略可）。
 - フォルダの対象は Tray の Gate ingest と同じ走査で `.obsidian/`・`.trash/` を落としてから、Tray の manifest に渡す（一時の staging で実行して消す）。
 - 応答: `output_dir`・`file_count`・`overall_sha256`（木全体のチェックサム・64 文字）・`record_path`。
+
+## --numbered-names（起動時フラグ・既定は無効）
+
+有効にすると、応答に出るファイルの名前が連番（`0001`、`0002`、…）に替わり、元の名前は応答に出ません。
+
+- `prepare_for_sharing` は Gate の `include_paths=False` の流れに乗ります: `handoff/` のコピーが `0001.visible.txt` の形になり、受領書の項目は `path` の代わりに `index` を運び、応答の `items[].path` は同じ 4 桁です。`remove_metadata` は clean の `no_paths=True` の流れに乗ります: コピーが `0001.png` の形になり、応答の `items[].path` は 4 桁・`output` は番号付きのコピー名です。`create_file_list` は `local/staging` への写しを `0001.txt` の形で作ってから manifest に渡します（応答の形は変わりません）。
+- 対応表（4 桁 → 元の相対パス）は、実行ごとの `local/names.json` にだけ書きます（`handoff/` には書かない）。`local/` は `read_handoff` の対象外です。
+- `observe_hidden_text` は何も書かない道具のため、対応表は書かれません。番号はその応答の中だけの対で、呼び出しごとに 1 から振り直します。
+- `verify_record` の理由の `path` も、番号の流れで作られた記録なら番号の形です（木全体の理由は固定の `.`）。フラグを無効のまま作られた記録は、記録に残った名前をそのまま運びます。
+- 誤りの応答は固定文（8 語）で、フラグの有無で変わらず、ファイル名を含みません。
+- 番号の並びは、各エンジンが乗る走査の整列順（決定的）です。

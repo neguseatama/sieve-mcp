@@ -5,7 +5,7 @@
 ## Build and test
 
 - Python >= 3.10（Tray 2.6.0 と同じ下限）。
-- 実行時の依存は `sieve-tray>=2.6.0` のみ（extras なし）。テストだけが
+- 実行時の依存は `sieve-tray>=2.6.0,<3` のみ（extras なし）。テストだけが
   公式 SDK（`pip install ".[test]"` で `mcp` が入る）。
 - Test suite: `python -m pytest -v`。
 - Package build: `python -m build`。
@@ -27,7 +27,9 @@
 4. **版の作法**: 版は `sieve_mcp_server/__init__.py` の `__version__` が
    唯一の静的な源。pyproject は dynamic attr で参照し、README ×2 の
    題字と CHANGELOG の最新の節と docs の登録表はそれと一致させる。
-   版を固定するテストは `__version__` との比較の形にする。
+   リポジトリ直下の `server.json`（レジストリ登録の面）と、`.mcpb` の
+   manifest（`tools/build_mcpb.py` が `__version__` から書く）もそれに
+   従う。版を固定するテストは `__version__` との比較の形にする。
 5. **CI**: 3 OS（ubuntu / windows / macos × 3.12、ubuntu 3.10 の下限）。
    環境に依存する失敗はテスト側を直し、製品の不具合は次の版で直す。
    期待するパスは OS に依存しない形（`as_posix()`）で組み、子プロセスの
