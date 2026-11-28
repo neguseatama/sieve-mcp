@@ -186,3 +186,15 @@ def test_mct12_the_release_rides_the_bundle_lane_and_the_attach_gate():
     assert release_yml.count(guard) == 1
     guard_at = release_yml.index(guard)
     assert release_yml.index("release-assets") > guard_at
+
+
+def test_mct21_the_release_body_stays_clean():
+    sys.path.insert(0, str(REPO_ROOT / "tools"))
+    import check_public_text as cpt
+    import extract_changelog as ec
+    from sieve_mcp_server import __version__
+    changelog = (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    body = ec.extract(changelog, __version__)
+    assert body.strip(), __version__
+    # the body the release attaches reads as facts only
+    assert cpt.scan_text(body) == []
