@@ -4,15 +4,21 @@ on:
   push:
     tags:
       - "v*"
-  # the trial run: the build with the wheel self-check, the release
-  # body extraction with its public-text watch and the SHA256SUMS list
-  # run on the manual dispatch and stay as build artifacts; only the
-  # provenance attestation and the release attach wait for a tag push
-  # (the guard on the publish job)
+  # the trial run: the build with the wheel self-check, the .mcpb
+  # bundle assembled by the checked-in recipe and packed by the
+  # official CLI, the release body extraction with its public-text
+  # watch and the SHA256SUMS list run on the manual dispatch and stay
+  # as build artifacts; only the provenance attestation and the release
+  # attach wait for a tag push (the guard on the publish job), and the
+  # bundle rides the attach only when the repository variable says the
+  # trial bundle passed on the real Desktop
   workflow_dispatch:
 
 permissions:
   contents: write
+
+env:
+  MCPB_CLI_VERSION: "2.1.2"
 
 jobs:
   build:
@@ -44,8 +50,46 @@ jobs:
           name: dist
           path: dist/
 
-  release-extras:
+  mcpb:
     needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Download the build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Build the .mcpb bundle
+        # the recipe is the checked-in script: the wheel and its
+        # runtime dependencies ride server/lib, the manifest carries
+        # the package's version, the official CLI validates and packs
+        run: |
+          npm install -g "@anthropic-ai/mcpb@${MCPB_CLI_VERSION}"
+          python3 tools/build_mcpb.py \
+            --wheel "artifacts/sieve_mcp_server-*.whl" \
+            --dest bundle
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcpb
+          path: bundle/*.mcpb
+
+  release-extras:
+    needs: [build, mcpb]
     runs-on: ubuntu-latest
     steps:
       - name: Check out the CHANGELOG
@@ -87,9 +131,19 @@ jobs:
           python3 tools/check_public_text.py --text release_body.md
 
       - name: Generate SHA256SUMS.txt
+        env:
+          MCPB_ATTACH: ${{ vars.MCPB_ATTACH }}
         run: |
           cd artifacts
           sha256sum *.whl *.tar.gz > SHA256SUMS.txt
+          # the bundle rides the checksums list only when it rides the
+          # release: the repository variable is set after the trial
+          # bundle passed on the real Desktop, and a set variable with
+          # no bundle file stops here
+          if [ "${MCPB_ATTACH}" = "yes" ]; then
+            test -f sieve-mcp-*.mcpb
+            sha256sum sieve-mcp-*.mcpb >> SHA256SUMS.txt
+          fi
 
       - name: Upload SHA256SUMS.txt as a build artifact
         uses: actions/upload-artifact@v4
@@ -127,8 +181,23 @@ jobs:
             artifacts/*.whl
             artifacts/*.tar.gz
 
-      - name: Attach SHA256SUMS.txt and the CHANGELOG body to the GitHub Release
+      - name: Stage the release assets
+        env:
+          MCPB_ATTACH: ${{ vars.MCPB_ATTACH }}
+        run: |
+          # one staged folder carries everything the release attaches,
+          # so the attach step's glob never matches an empty set: the
+          # checksums list always rides, the bundle rides only when the
+          # repository variable says the trial bundle passed
+          mkdir release-assets
+          cp artifacts/SHA256SUMS.txt release-assets/
+          if [ "${MCPB_ATTACH}" = "yes" ]; then
+            test -f artifacts/sieve-mcp-*.mcpb
+            cp artifacts/sieve-mcp-*.mcpb release-assets/
+          fi
+
+      - name: Attach the release assets and the CHANGELOG body to the GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/SHA256SUMS.txt
+          files: release-assets/*
           body_path: artifacts/release_body.md
