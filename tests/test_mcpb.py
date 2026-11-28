@@ -51,6 +51,12 @@ def test_mct20_the_bundle_recipe_rides_the_package_version(tmp_path):
     assert manifest["version"] == __version__
     assert manifest["author"] == {"name": "Kai IWASAKI"}
     assert manifest["license"] == "MIT"
+    assert manifest["icon"] == "icon.png"
+    png = (REPO_ROOT / "icon.png").read_bytes()
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"
+    staged_icon = stage / "icon.png"
+    assert staged_icon.is_file()
+    assert staged_icon.read_bytes() == png
     server = manifest["server"]
     assert server["type"] == "python"
     assert server["entry_point"] == "server/server.py"
